@@ -13,6 +13,7 @@ To run the code, you should install the requiresments. The code is run on python
  pip install -r requirements.txt
 ```
 
+Meanwhile, you might need to install pytorch3d (This is not necessary for pretraining). We build pytorch3d from this  git+https://github.com/facebookresearch/pytorch3d.git@89653419d0973396f3eff1a381ba09a07fffc2ed#egg=pytorch3d.
 
 Then, clone the code as follow,
 
