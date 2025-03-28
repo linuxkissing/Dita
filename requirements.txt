@@ -191,7 +191,6 @@ PySocks==1.7.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.9
--e git+https://github.com/facebookresearch/pytorch3d.git@89653419d0973396f3eff1a381ba09a07fffc2ed#egg=pytorch3d
 pytz==2023.4
 pyu2f==0.1.5
 PyYAML==6.0.1
