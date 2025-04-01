@@ -1,7 +1,7 @@
 import numpy as np
 
 
-from rt1_pytorch.openx_utils.geometry import compact_axis_angle_from_quaternion, inv_scale_action
+from openvla.prismatic.util.geometry import compact_axis_angle_from_quaternion, inv_scale_action
 from transforms3d.euler import euler2quat, euler2mat, quat2euler, mat2euler
 from transforms3d.quaternions import mat2quat, quat2mat
 

@@ -21,7 +21,7 @@ from mani_skill2.utils.sapien_utils import look_at
 from mani_skill2.utils.visualization.cv2_utils import OpenCVViewer
 from mani_skill2.utils.wrappers import RecordEpisode
 
-from openx_utils.robot_utils import cal_action, cal_action_from_pose, eef_pose
+from openvla.prismatic.util.robot_utils import cal_action, cal_action_from_pose, eef_pose
 from PIL import Image
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from tqdm import tqdm

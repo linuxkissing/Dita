@@ -89,7 +89,7 @@ def init_distributed_mode(args, cfg, init_method=None):
     )
     torch.distributed.barrier()
     print(torch.distributed.get_world_size())
-    setup_for_distributed(rank == 0)
+    # setup_for_distributed(rank == 0)
 
 
 
@@ -106,5 +106,6 @@ def setup_for_distributed(is_master):
         flush = kwargs.pop("flush", True)
         if is_master or force:
             builtin_print(*args, **kwargs, flush=flush)
+            
 
     __builtin__.print = print

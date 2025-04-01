@@ -68,7 +68,17 @@ we train the network with 4GPUs.
 python scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batch_size=32 dataset.traj_length=11 num_pred_action=10 task_name=calvin_exp dataset.num_given_observation=2 dataset=fix_camera use_close_loop_eval=True close_loop_eval.test_episodes_num=32 dataset.use_baseframe_action=True taskname=task_ABC_D dataname=calvin_mc close_loop_eval.eval_iters=10000 close_loop_eval.test_episodes_num=250 scheduler_type=0 wrap_grmg_data=2 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 epoch=15 +min_lr_scale=0.01 scheduler.warmup_epochs=1
 ```
 
+### Finetuning on LIBERO
 
+Firstly, please follow [OpenVLA](https://github.com/openvla/openvla?tab=readme-ov-file#libero-simulation-benchmark-evaluations) to set up the LIBERO benchmark and get the modified version of the dataset. 
+
+We train and evaluate the model with 8 NVIDIA A100 GPUs. 
+
+Here is an example of the training script.
+
+```
+python scripts/train_diffusion_oxe.py task_name=finetuning_LIBERO dataname=libero_spatial_no_noops dataset.traj_length=11 num_pred_action=10 scheduler_type=1 shuffle_buffer_size=128000 batch_size=64 use_close_loop_eval=True +trajectory_dim=7 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 +min_lr_scale=0.01 +image_aug=true 
+```
 
 
 
@@ -120,7 +130,7 @@ Please refer to the [project page](https://RoboDita.github.io/).
 
 ### Acknowledgement
 
-The dataloader code of OXE is based on [OpenVLA](https://github.com/openvla/openvla), The dataloader code of CALVIN is based on [GR-MG](https://github.com/bytedance/GR-MG), The architecture is based on transformers. If you have any questions, feel free to contact Zhi Hou (zhou9878 at uni dot sydney dot edu dot au) or Tianyi Zhang (tianyizhang0213 at zju dot edu dot cn)
+The dataloader code of OXE and part of the code of libero setup are based on [OpenVLA](https://github.com/openvla/openvla), The dataloader code of CALVIN is based on [GR-MG](https://github.com/bytedance/GR-MG), The architecture is based on transformers. If you have any questions, feel free to contact Zhi Hou (zhou9878 at uni dot sydney dot edu dot au) or Tianyi Zhang (tianyizhang0213 at zju dot edu dot cn)
 
 
 

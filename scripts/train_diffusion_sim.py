@@ -16,8 +16,9 @@ from utils.ddp_utils import init_distributed_mode
 from functools import partial
 current_path = os.getcwd()
 sys.path.append(current_path)
-sys.path.append(os.path.join(current_path, "scripts/openx_utils/"))
-sys.path.append(os.path.join(current_path, "../embodied_foundation/scripts"))
+sys.path.append(os.path.join(current_path, "utils/"))
+sys.path.append(os.path.join(current_path, "../scripts"))
+sys.path.append(os.path.join(current_path, "../openvla"))
 # export PYTHONPATH="$(pwd)":"$(pwd)/rt1_pytorch/openx_utils/":"$(pwd)/../":"$(pwd)/../embodied_foundation/rt1_pytorch":$PYTHONPATH
 
 
@@ -277,7 +278,7 @@ def evaluate_act(network, eval_dataloader, DEVICE, tokens_per_context_image,
 
             trajectory_gt = get_gt_trajectory(cfg, act_new)
 
-            set_obs_poses(cfg, obs_new, act_new)
+            # set_obs_poses(cfg, obs_new, act_new)
             cond_data = torch.zeros(size=(len(trajectory_gt), trajectory_gt.shape[1], trajectory_gt.shape[-1]), device=DEVICE, dtype=trajectory_gt.dtype)
 
             if cfg.dataname in ['rlbench', 'calvin', 'calvin_mc', 'metaworld']:

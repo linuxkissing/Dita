@@ -3,7 +3,7 @@ import os
 
 
 
-os.environ['LD_PRELOAD']='/xxx/xxx/Anonymous/lib/libtcmalloc_minimal.so.4.5.8'
+# os.environ['LD_PRELOAD']='/xxx/xxx/Anonymous/lib/libtcmalloc_minimal.so.4.5.8'
 import argparse
 from dataclasses import dataclass
 import datetime
@@ -16,14 +16,15 @@ import time
 import random
 import cv2
 import datetime
+import importlib
 
 current_path = os.getcwd()
 sys.path.append(current_path)
-sys.path.append(os.path.join(current_path, "scripts/openx_utils/"))
-sys.path.append(os.path.join(current_path, "../embodied_foundation/scripts"))
-sys.path.append(os.path.join(current_path, "../embodied_foundation/openvla"))
+sys.path.append(os.path.join(current_path, "utils/"))
+sys.path.append(os.path.join(current_path, "../scripts"))
+sys.path.append(os.path.join(current_path, "../openvla"))
 
-# export PYTHONPATH="$(pwd)":"$(pwd)/rt1_pytorch/openx_utils/":"$(pwd)/../":"$(pwd)/../embodied_foundation/rt1_pytorch":$PYTHONPATH
+
 
 
 
@@ -53,6 +54,8 @@ from llama_dp import RobotTransformerNet
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 import importlib
+from functools import partial
+import math
 from torch.utils.data import DataLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -89,7 +92,18 @@ def unnormalize(x):
 
     return x
 
+def adjust_learning_rate(iter, configs):
+    """Decay the learning rate with half-cycle cosine after warmup"""
+    warmup_iters = configs['warmup_iters']
+    total_iters = configs['iters']
+    min_lr_scale = configs['min_lr_scale']
 
+    if iter < configs['warmup_iters']:
+        lr_scaler = 1.0 * iter / warmup_iters
+    else:
+        lr_scaler = min_lr_scale + (1.0 - min_lr_scale) * 0.5 * \
+            (1.0 + math.cos(math.pi * (iter - warmup_iters) / (total_iters - warmup_iters)))
+    return lr_scaler
 
 def get_args_parser():
 
@@ -306,6 +320,18 @@ def train(cfg: DictConfig):
         step_on_epochs=cfg.scheduler.step_on_epochs,
     )
 
+    if "use_adjust_scheduler" in cfg and cfg.use_adjust_scheduler:
+
+        print("use adjust scheduler!!!!!!!", flush = True)
+        
+        lr_scheduler_configs = {
+            'warmup_iters': 1000,
+            'iters': 100000,
+            'min_lr_scale': cfg.min_lr_scale
+        }
+        lr_lambda = partial(adjust_learning_rate, configs=lr_scheduler_configs)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
     start_epoch = 0
     total_iter_num = 0
     start_epoch, total_iter_num, checkpoint_path, tensorboard_path, log_path, run_dir = resume_or_load_checkpoint(cfg, network, optimizer, None)  
@@ -443,8 +469,10 @@ def train(cfg: DictConfig):
                 loss_world_vector = reduce_and_average(loss_world_vector)
                 loss_grip_close = reduce_and_average(loss_grip_close)
 
-                scheduler.step_update(epoch * len(train_dataloader) + i)
-
+                if "use_adjust_scheduler" in cfg and cfg.use_adjust_scheduler:
+                    scheduler.step()
+                else:
+                    scheduler.step_update(epoch * len(train_dataloader) + i)
                 
                 
                 
@@ -497,6 +525,22 @@ def train(cfg: DictConfig):
                 # *******************************************************#
                 # EVAL PART
 
+                if "libero" in cfg.dataname and total_iter_num % cfg.close_loop_eval.eval_iters == 0 and total_iter_num != 0 and cfg.use_close_loop_eval:
+                    close_loop_eval = getattr(importlib.import_module("close_loop_eval_diffusion_libero"), "close_loop_eval_libero")
+                    close_loop_eval_start_time = time.time()
+                    _ = close_loop_eval(
+                        model=network,
+                        test_episodes_num=cfg.close_loop_eval.test_episodes_num,
+                        args=args,
+                        stride=cfg.dataset.stride,
+                        root_folder = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "close_loop_videos", f"{total_iter_num}_iters"),
+                        cfg = cfg,
+                        dataset_statistics = vla_dataset_openx.dataset_statistics,
+                    )
+
+
+
+
                 total_iter_num += 1
                 data_start_time = time.time()
         except Exception as e:
@@ -521,8 +565,8 @@ def train(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    SLURM_STEP_NODELIST = os.environ['SLURM_STEP_NODELIST']
-    import subprocess
-    output = subprocess.check_output("scontrol show hostname {} | head -n1".format(SLURM_STEP_NODELIST), shell=True)
-    os.environ['MASTER_ADDR'] = output.strip().decode('ascii')
+    # SLURM_STEP_NODELIST = os.environ['SLURM_STEP_NODELIST']
+    # import subprocess
+    # output = subprocess.check_output("scontrol show hostname {} | head -n1".format(SLURM_STEP_NODELIST), shell=True)
+    # os.environ['MASTER_ADDR'] = output.strip().decode('ascii')
     train()
