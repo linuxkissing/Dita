@@ -72,7 +72,7 @@ python scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batc
 
 Firstly, please follow [OpenVLA](https://github.com/openvla/openvla?tab=readme-ov-file#libero-simulation-benchmark-evaluations) to set up the LIBERO benchmark and get the modified version of the dataset. 
 
-We train and evaluate the model with 8 NVIDIA A100 GPUs. 
+We train and evaluate the model with 8 NVIDIA GPUs. 
 
 Here is an example of the training script.
 
