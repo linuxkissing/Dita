@@ -31,7 +31,10 @@ def resume_or_load_checkpoint(cfg, network, optimizer, scheduler, loss_scaler=No
                 network.image_tokenizer.qformer.queries.data[:, :num_quries].copy_(ckpt["parameter"]["image_tokenizer.qformer.queries"])
                 # import ipdb;ipdb.set_trace()
             else:
-                print(network.load_state_dict(ckpt["parameter"]))
+                if 'parameter' in ckpt:
+                    print(network.load_state_dict(ckpt["parameter"]))
+                else:
+                    print(network.load_state_dict(ckpt))
             print("Load checkpoint successfully!!", flush = True)
     
     if "ckpt_path" in cfg and cfg.ckpt_path != "None" :
