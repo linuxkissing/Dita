@@ -7,21 +7,24 @@
 
 ### Installation
 
-To run the code, you should install the requiresments. The code is run on python3.10 and pytorch 2.2.0, tensorflow==2.15.0, CUDA 12.1. 
+To run the code, you should install the requiresments. The code is run on python3.10 and pytorch 2, tensorflow==2.15.0, CUDA 12.1. 
+
+clone the code as follow,
+
+```
+git clone https://github.com/RoboDita/Dita
+```
+
+then,
 
 ```
  pip install -r requirements.txt
 ```
 
-To avoid the conflicts, we suggest you install tensorflow-probability==0.22.0 independently.
+If you only evaluate it on calvin, you might use requirements_calvin.txt. To avoid the conflicts, we suggest you install tensorflow-probability==0.22.0 independently.
 
 Meanwhile, you might need to install pytorch3d (This is not necessary for pretraining). We build pytorch3d from this  git+https://github.com/facebookresearch/pytorch3d.git@89653419d0973396f3eff1a381ba09a07fffc2ed#egg=pytorch3d.
 
-Then, clone the code as follow,
-
-```
-git clone https://github.com/RoboDita/Dita
-```
 
 
 ### Model Checkpoints
