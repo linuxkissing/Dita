@@ -15,7 +15,7 @@ from prismatic.models.backbones.llm.prompting import PromptBuilder
 from prismatic.models.backbones.vision import ImageTransform
 from prismatic.util.data_utils import PaddedCollatorForActionPrediction
 from prismatic.vla.action_tokenizer import ActionTokenizer
-from prismatic.vla.datasets.datasets import DummyDataset1
+
 
 
 
@@ -81,6 +81,7 @@ def get_vla_dataset_and_collator(
         tokenizer.model_max_length, tokenizer.pad_token_id, padding_side=padding_side
     )
     if dumpy_data:
+        from prismatic.vla.datasets.datasets import DummyDataset1
         dataset = DummyDataset1(data_root_dir,
             data_mix,
             batch_transform,
