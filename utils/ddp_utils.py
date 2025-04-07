@@ -74,23 +74,23 @@ def init_distributed_mode(args, cfg, init_method=None):
 
     
 
-    
-    dist_backend = "nccl"
-    # print(HydraConfig.get(), )
-    # init_method = os.path.join(HydraConfig.get().runtime.cwd, cfg.task_name, "initial_method.txt")
-    # init_method = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "initial_method.txt")
-    # print(init_method,int(os.environ["WORLD_SIZE"]), int(os.environ["RANK"]), args)
-    # print(os.environ['MASTER_ADDR'])
-    torch.distributed.init_process_group(
-        backend=dist_backend,  # init_method=args.dist_url,
-        # init_method=f"file://{init_method}",
-        # init_method= init_method,
-        timeout=datetime.timedelta(seconds=7200),
-        world_size=int(os.environ["WORLD_SIZE"]),
-        rank=int(os.environ["RANK"]),
-    )
-    torch.distributed.barrier()
-    print(torch.distributed.get_world_size())
+    if not torch.distributed.is_initialized():
+        dist_backend = "nccl"
+        # print(HydraConfig.get(), )
+        # init_method = os.path.join(HydraConfig.get().runtime.cwd, cfg.task_name, "initial_method.txt")
+        # init_method = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "initial_method.txt")
+        # print(init_method,int(os.environ["WORLD_SIZE"]), int(os.environ["RANK"]), args)
+        # print(os.environ['MASTER_ADDR'])
+        torch.distributed.init_process_group(
+            backend=dist_backend,  # init_method=args.dist_url,
+            # init_method=f"file://{init_method}",
+            # init_method= init_method,
+            timeout=datetime.timedelta(seconds=7200),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            rank=int(os.environ["RANK"]),
+        )
+        torch.distributed.barrier()
+        print(torch.distributed.get_world_size())
     # setup_for_distributed(rank == 0)
 
 

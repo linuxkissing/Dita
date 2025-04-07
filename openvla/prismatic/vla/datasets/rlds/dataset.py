@@ -262,7 +262,6 @@ def make_dataset_from_rlds(
     REQUIRED_KEYS = {"observation", "action"}
     if language_key is not None:
         REQUIRED_KEYS.add(language_key)
-    print('clamp_value2', clamp_value, state_obs_keys)
     def restructure(traj):
         # apply a standardization function, if provided
         if standardize_fn is not None:
@@ -418,7 +417,6 @@ def make_dataset_from_rlds(
         pass
 # 
     if action_proprio_normalization_type is not None:
-        print('clamp_value444', clamp_value)
         dataset = dataset.traj_map(
             partial(
                 normalize_action_and_proprio,
@@ -693,9 +691,6 @@ def make_interleaved_dataset(
     balance_weights: bool = False,
     traj_transform_threads: Optional[int] = None,
     traj_read_threads: Optional[int] = None,
-    gen_prompt_transform=0,
-    gen_prompt_transform_kwargs = None,
-    use_common_statisticcs=False,
     clamp_value=True,
 ) -> dl.DLataset:
     """
@@ -760,8 +755,7 @@ def make_interleaved_dataset(
             if "dataset_frame_transform_kwargs" in data_kwargs:
                 data_kwargs.pop("dataset_frame_transform_kwargs")
             data_kwargs['action_proprio_normalization_type'] = None
-            if use_common_statisticcs:
-                data_kwargs['max_action'] = 0.2
+
             data_kwargs['clamp_value'] = clamp_value
             print('clamp_value1', clamp_value, data_kwargs['clamp_value'])
             tmp_dataset, dataset_statistics = make_dataset_from_rlds(**data_kwargs, train=train)
@@ -778,24 +772,6 @@ def make_interleaved_dataset(
         sample_weights = np.array(sample_weights) * np.array(dataset_sizes)
     sample_weights = np.array(sample_weights) / np.sum(sample_weights)
     pprint_data_mixture(dataset_kwargs_list, sample_weights)
-
-
-    
-    if not os.path.exists('./all_dataset_statistics.json') and use_common_statisticcs:    
-        # tries to load from cache, otherwise computes on the fly
-        dataset_stat: dl.DLataset = dl.DLataset.sample_from_datasets(datasets_stat, sample_weights)
-        dataset_statistics_common = get_dataset_statistics(
-            dataset_stat,
-            hash_dependencies='',
-            save_dir='./',
-            dataset_name='all_dataset_statistics.json',
-        )
-        json.dump(dataset_statistics_common, open('./all_dataset_statistics.json', 'w'),)
-    elif use_common_statisticcs:
-        with tf.io.gfile.GFile('./all_dataset_statistics.json', "r") as f:
-            dataset_statistics_common = json.load(f)
-    else:
-        del datasets_stat
 
     # Effective Dataset Length = Number of samples until each dataset has completed at least one epoch
     #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight == 1.0)
@@ -837,7 +813,7 @@ def make_interleaved_dataset(
             train=train,
             num_parallel_calls=threads,
             num_parallel_reads=reads,
-            dataset_statistics=all_dataset_statistics[dataset_kwargs["name"]] if not use_common_statisticcs else dataset_statistics_common,
+            dataset_statistics=all_dataset_statistics[dataset_kwargs["name"]],
         )
         dataset = apply_trajectory_transforms(
             # dataset.repeat(),

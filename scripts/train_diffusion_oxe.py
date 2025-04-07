@@ -21,9 +21,7 @@ import importlib
 current_path = os.getcwd()
 sys.path.append(current_path)
 sys.path.append(os.path.join(current_path, "utils/"))
-sys.path.append(os.path.join(current_path, "../scripts"))
 sys.path.append(os.path.join(current_path, "scripts"))
-sys.path.append(os.path.join(current_path, "../openvla"))
 sys.path.append(os.path.join(current_path, "openvla"))
 print(sys.path)
 
@@ -352,8 +350,8 @@ def train(cfg: DictConfig):
                 state[k] = v.to(DEVICE)
 
     if args.distributed:
-        network_module = network.module
         network = torch.nn.parallel.DistributedDataParallel(network.cuda(local_rank), device_ids=[local_rank], find_unused_parameters=False)
+        network_module = network.module
     else:
         network_module = network
         network = network.to(DEVICE)
@@ -583,4 +581,8 @@ if __name__ == "__main__":
     # import subprocess
     # output = subprocess.check_output("scontrol show hostname {} | head -n1".format(SLURM_STEP_NODELIST), shell=True)
     # os.environ['MASTER_ADDR'] = output.strip().decode('ascii')
+
+    # for some cluster, you might need this code below
+    # import torch.multiprocessing as mp
+    # mp.set_start_method('fork', force=True)
     train()

@@ -254,21 +254,13 @@ class RLDSDataset(IterableDataset):
         future_action_window_size= 0,
         batch_size = None,
         batchfy=False,
-        prompt_builder_fn=None,
-        action_tokenizer=None,
-        base_tokenizer=None,
-        gen_prompt_transform=0,
-        num_image_token=32,
         subsample_length=None,
         subsample_type=None,
-        use_common_statisticcs=False,
         center_crop=False,
         max_action=None, # 2.5
         max_proprio=None,
         clamp_value=False,
         load_proprio=False,
-        prompt_type= 0,
-        with_loc_task=False,
         action_proprio_normalization_type=NormalizationType.BOUNDS_Q99,
         load_camera_views=("primary",),
     ) -> None:
@@ -305,8 +297,6 @@ class RLDSDataset(IterableDataset):
                 subsample_type=subsample_type,
                 max_action=max_action,
                 max_proprio=max_proprio,
-                with_loc_task=with_loc_task,
-
             ),
             frame_transform_kwargs=dict(
                 resize_size=resize_resolution,
@@ -320,14 +310,6 @@ class RLDSDataset(IterableDataset):
             traj_transform_threads=len(mixture_spec),
             traj_read_threads=len(mixture_spec),
             train=train,
-            gen_prompt_transform = gen_prompt_transform,
-            gen_prompt_transform_kwargs=dict(action_tokenizer = action_tokenizer,
-            prompt_builder_fn = prompt_builder_fn, 
-            num_image_token=num_image_token,
-            num_images = len(load_camera_views),
-            prompt_type=prompt_type,
-            base_tokenizer=base_tokenizer),
-            use_common_statisticcs=use_common_statisticcs,
             clamp_value=clamp_value,
         )
 
@@ -465,7 +447,6 @@ class DummyDataset1(Dataset):
         num_image_token=32,
         subsample_length=None,
         subsample_type=None,
-        use_common_statisticcs=False,
         center_crop=False,
         max_action=1.,
         max_proprio=None,
