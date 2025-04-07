@@ -384,182 +384,177 @@ def train(cfg: DictConfig):
 
         iter_start_time = time.time()
         
-        try:
-            print('begin')
-            for i, batch in enumerate(train_dataloader):
-            # for i in range(1000):
+        print('begin')
+        for i, batch in enumerate(train_dataloader):
+        # for i in range(1000):
 
-                optimizer.zero_grad()
+            optimizer.zero_grad()
 
-                # batch_new = dict_to_gpu(batch, DEVICE)
-                
-                obs_new = {}
-                obs_new['language_instruction'] = batch['language_instruction']
-                
-                obs_new['image'] = batch['pixel_values'].to(DEVICE).clone()
+            # batch_new = dict_to_gpu(batch, DEVICE)
+            
+            obs_new = {}
+            obs_new['language_instruction'] = batch['language_instruction']
+            
+            obs_new['image'] = batch['pixel_values'].to(DEVICE).clone()
 
-                # print('load_proprio' in cfg)
-                if 'load_proprio' in cfg:
-                    # import ipdb;ipdb.set_trace()
-                    actions = batch["action"][:, :].to(DEVICE).clone()
-                    obs_new['poses'] = batch['state'][:, :1, :]
+            # print('load_proprio' in cfg)
+            if 'load_proprio' in cfg:
+                # import ipdb;ipdb.set_trace()
+                actions = batch["action"][:, :].to(DEVICE).clone()
+                obs_new['poses'] = batch['state'][:, :1, :]
+            else:
+                actions = batch["action"].to(DEVICE).clone()
+
+            train_start_time = time.time()
+            
+            # loss_mask = torch.sum(act_new['loss_weight'], dim=-1) != 0
+            loss_mask = batch['loss_weight'].to(DEVICE).clone()
+
+            trajectory = actions
+            # if rank == 0 and i % 10 == 0:
+            #     print(actions[0, :])
+
+            noise = torch.randn(trajectory.shape, device=trajectory.device)
+            bsz = trajectory.shape[0]
+
+            timesteps = torch.randint(0, network_module.noise_scheduler.config.num_train_timesteps, (bsz,), device=trajectory.device).long()
+
+            noisy_trajectory = network_module.noise_scheduler.add_noise(trajectory, noise, timesteps)
+
+
+            inputs = clip_tokenizer(text=obs_new['language_instruction'], return_tensors="pt", max_length=77, padding="max_length", truncation=True)
+            for key in inputs:
+                inputs[key] = inputs[key].to(DEVICE)
+
+            ccontext = clipmodel.text_model(**inputs)[0].squeeze(0).detach()
+            ccontext = ccontext[:, None,...].repeat(1, obs_new['image'].shape[1], 1, 1)
+            obs_new['natural_language_embedding'] = ccontext
+
+            with torch.cuda.amp.autocast():
+                pred = network(obs_new, None, noisy_action_tokens=noisy_trajectory,timesteps=timesteps, num_pred_action=cfg.num_pred_action,)
+                if network_module.noise_scheduler.config.prediction_type == 'epsilon':
+                    target = noise
+                    if 'no_abs_diff' in cfg and cfg.no_abs_diff:
+                        target = torch.cat([trajectory[:, :1], noise[:, 1:]], dim=1)
+                elif network_module.noise_scheduler.config.prediction_type == 'sample':
+                    target = trajectory
+                    pass
+                elif network_module.noise_scheduler.config.prediction_type == 'v_prediction':
+                    target = network_module.noise_scheduler.get_velocity(trajectory, noise, timesteps)
+                    pass
                 else:
-                    actions = batch["action"].to(DEVICE).clone()
+                    raise ValueError(f"Unsupported prediction type {network_module.noise_scheduler.config.prediction_type}")
+                b, num, dim = pred.shape
+                # import ipdb;ipdb.set_trace()
+                logits = pred
+                loss = F.mse_loss(logits[...,:,:], target[..., :,:, ], reduction='none')
+                orig_loss = loss
 
-                train_start_time = time.time()
+                running_loss = loss.detach()
+                from einops import rearrange, reduce
+                loss = loss[loss_mask]
+                loss = reduce(loss, 'b ... -> b (...)', 'mean')
+                extra_loss = reduce(orig_loss[:, :-cfg.dataset.traj_length], 'b ... -> b (...)', 'mean').detach()
+                # import ipdb;ipdb.set_trace()
                 
-                # loss_mask = torch.sum(act_new['loss_weight'], dim=-1) != 0
-                loss_mask = batch['loss_weight'].to(DEVICE).clone()
+                loss = loss.mean()
+            loss_scaler(loss, optimizer)
 
-                trajectory = actions
-                # if rank == 0 and i % 10 == 0:
-                #     print(actions[0, :])
+            loss_rota = running_loss[...,3:6].mean()
+            loss_world_vector = running_loss[...,:3].mean()
+            loss_grip_close = running_loss[...,6:8].mean()
+            # loss_terminate = running_loss[...,8:].mean()
+            
+            running_loss = running_loss.mean()
+            
+            
+            extra_loss_rota = extra_loss[...,3:6].mean()
+            extra_loss_trans = extra_loss[...,:3].mean()
 
-                noise = torch.randn(trajectory.shape, device=trajectory.device)
-                bsz = trajectory.shape[0]
+            running_loss = reduce_and_average(running_loss)
 
-                timesteps = torch.randint(0, network_module.noise_scheduler.config.num_train_timesteps, (bsz,), device=trajectory.device).long()
+            extra_loss_trans = reduce_and_average(extra_loss_trans)
+            extra_loss_rota = reduce_and_average(extra_loss_rota)
 
-                noisy_trajectory = network_module.noise_scheduler.add_noise(trajectory, noise, timesteps)
+            loss_rota = reduce_and_average(loss_rota)
+            loss_world_vector = reduce_and_average(loss_world_vector)
+            loss_grip_close = reduce_and_average(loss_grip_close)
 
+            if "use_adjust_scheduler" in cfg and cfg.use_adjust_scheduler:
+                scheduler.step()
+            else:
+                scheduler.step_update(epoch * len(train_dataloader) + i)
+            
+            
+            
+            # data_time = iter_time - train_time
 
-                inputs = clip_tokenizer(text=obs_new['language_instruction'], return_tensors="pt", max_length=77, padding="max_length", truncation=True)
-                for key in inputs:
-                    inputs[key] = inputs[key].to(DEVICE)
+            if rank == 0:
+                if i % 10 == 0:
+                    iter_end_time = time.time()
+                    iter_time = (iter_end_time - iter_start_time) / 10
+                    train_time = (iter_end_time - train_start_time)
+                    iter_start_time = time.time()
+                    print("[epoch {}, iter {}, iter_time {}, train_time {}, ] lr: {} loss: {}, ext_vec: {}, extra_rota: {}, world_vector:{}, rota:{}, grip:{}, ".
+                        format(epoch + 1, i + 1, iter_time,train_time, optimizer.param_groups[0]["lr"], running_loss, extra_loss_trans, extra_loss_rota, loss_world_vector, loss_rota, loss_grip_close), flush=True)
 
-                ccontext = clipmodel.text_model(**inputs)[0].squeeze(0).detach()
-                ccontext = ccontext[:, None,...].repeat(1, obs_new['image'].shape[1], 1, 1)
-                obs_new['natural_language_embedding'] = ccontext
-
-                with torch.cuda.amp.autocast():
-                    pred = network(obs_new, None, noisy_action_tokens=noisy_trajectory,timesteps=timesteps, num_pred_action=cfg.num_pred_action,)
-                    if network_module.noise_scheduler.config.prediction_type == 'epsilon':
-                        target = noise
-                        if 'no_abs_diff' in cfg and cfg.no_abs_diff:
-                            target = torch.cat([trajectory[:, :1], noise[:, 1:]], dim=1)
-                    elif network_module.noise_scheduler.config.prediction_type == 'sample':
-                        target = trajectory
-                        pass
-                    elif network_module.noise_scheduler.config.prediction_type == 'v_prediction':
-                        target = network_module.noise_scheduler.get_velocity(trajectory, noise, timesteps)
-                        pass
-                    else:
-                        raise ValueError(f"Unsupported prediction type {network_module.noise_scheduler.config.prediction_type}")
-                    b, num, dim = pred.shape
-                    # import ipdb;ipdb.set_trace()
-                    logits = pred
-                    loss = F.mse_loss(logits[...,:,:], target[..., :,:, ], reduction='none')
-                    orig_loss = loss
-
-                    running_loss = loss.detach()
-                    from einops import rearrange, reduce
-                    loss = loss[loss_mask]
-                    loss = reduce(loss, 'b ... -> b (...)', 'mean')
-                    extra_loss = reduce(orig_loss[:, :-cfg.dataset.traj_length], 'b ... -> b (...)', 'mean').detach()
-                    # import ipdb;ipdb.set_trace()
+                if writer is not None:
+                    writer.add_scalar("MSE_loss", running_loss, total_iter_num)
+                    writer.add_scalar("MSE_loss_rota", loss_rota, total_iter_num)
+                    writer.add_scalar("MSE_loss_world_vector", loss_world_vector, total_iter_num)
+                    writer.add_scalar("MSE_loss_grip_close", loss_grip_close, total_iter_num)
+                    # writer.add_scalar("MSE_loss_terminate", loss_terminate, total_iter_num)
                     
-                    loss = loss.mean()
-                loss_scaler(loss, optimizer)
-
-                loss_rota = running_loss[...,3:6].mean()
-                loss_world_vector = running_loss[...,:3].mean()
-                loss_grip_close = running_loss[...,6:8].mean()
-                # loss_terminate = running_loss[...,8:].mean()
-                
-                running_loss = running_loss.mean()
-                
-                
-                extra_loss_rota = extra_loss[...,3:6].mean()
-                extra_loss_trans = extra_loss[...,:3].mean()
-
-                running_loss = reduce_and_average(running_loss)
-
-                extra_loss_trans = reduce_and_average(extra_loss_trans)
-                extra_loss_rota = reduce_and_average(extra_loss_rota)
-
-                loss_rota = reduce_and_average(loss_rota)
-                loss_world_vector = reduce_and_average(loss_world_vector)
-                loss_grip_close = reduce_and_average(loss_grip_close)
-
-                if "use_adjust_scheduler" in cfg and cfg.use_adjust_scheduler:
-                    scheduler.step()
-                else:
-                    scheduler.step_update(epoch * len(train_dataloader) + i)
-                
-                
-                
-                # data_time = iter_time - train_time
-
-                if rank == 0:
-                    if i % 10 == 0:
-                        iter_end_time = time.time()
-                        iter_time = (iter_end_time - iter_start_time) / 10
-                        train_time = (iter_end_time - train_start_time)
-                        iter_start_time = time.time()
-                        print("[epoch {}, iter {}, iter_time {}, train_time {}, ] lr: {} loss: {}, ext_vec: {}, extra_rota: {}, world_vector:{}, rota:{}, grip:{}, ".
-                            format(epoch + 1, i + 1, iter_time,train_time, optimizer.param_groups[0]["lr"], running_loss, extra_loss_trans, extra_loss_rota, loss_world_vector, loss_rota, loss_grip_close), flush=True)
-
-                    if writer is not None:
-                        writer.add_scalar("MSE_loss", running_loss, total_iter_num)
-                        writer.add_scalar("MSE_loss_rota", loss_rota, total_iter_num)
-                        writer.add_scalar("MSE_loss_world_vector", loss_world_vector, total_iter_num)
-                        writer.add_scalar("MSE_loss_grip_close", loss_grip_close, total_iter_num)
-                        # writer.add_scalar("MSE_loss_terminate", loss_terminate, total_iter_num)
-                        
-                        writer.add_scalar("MSE_loss_extra_rota", extra_loss_rota, total_iter_num)
-                        writer.add_scalar("MSE_loss_extra_world_vector", extra_loss_trans, total_iter_num)
-                        
-                # running_loss = 0.0
-                sys.stdout.flush()
-
-                if (
-                    rank == 0
-                    and total_iter_num != 0
-                    and (total_iter_num % 1000 == 0) and 'no_checkpoints' not in cfg
-                ):
-                    checkpoint = {
-                        "parameter": network_module.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "scheduler": scheduler.state_dict(),
-                        "epoch": epoch,
-                        "iter": i,
-                        "total_iter_num": total_iter_num,
-                        "loss": running_loss,
-                        "loss_scaler": loss_scaler.state_dict(),
-                    }
-                    print("save checkpoint!", os.path.join(checkpoint_path, f"ckpt_{total_iter_num}.pth"))
-                    torch.save(checkpoint, os.path.join(checkpoint_path, f"ckpt_{total_iter_num}.pth"))
-                    for item in sorted(os.listdir(checkpoint_path), key=lambda x: os.path.getmtime(os.path.join(checkpoint_path, x)))[:-1]:
-                        if item.endswith('pth'):
-                            os.system('rm {}'.format(os.path.join(checkpoint_path, item)))
+                    writer.add_scalar("MSE_loss_extra_rota", extra_loss_rota, total_iter_num)
+                    writer.add_scalar("MSE_loss_extra_world_vector", extra_loss_trans, total_iter_num)
                     
+            # running_loss = 0.0
+            sys.stdout.flush()
 
-                # *******************************************************#
-                # EVAL PART
+            if (
+                rank == 0
+                and total_iter_num != 0
+                and (total_iter_num % 1000 == 0) and 'no_checkpoints' not in cfg
+            ):
+                checkpoint = {
+                    "parameter": network_module.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "scheduler": scheduler.state_dict(),
+                    "epoch": epoch,
+                    "iter": i,
+                    "total_iter_num": total_iter_num,
+                    "loss": running_loss,
+                    "loss_scaler": loss_scaler.state_dict(),
+                }
+                print("save checkpoint!", os.path.join(checkpoint_path, f"ckpt_{total_iter_num}.pth"))
+                torch.save(checkpoint, os.path.join(checkpoint_path, f"ckpt_{total_iter_num}.pth"))
+                for item in sorted(os.listdir(checkpoint_path), key=lambda x: os.path.getmtime(os.path.join(checkpoint_path, x)))[:-1]:
+                    if item.endswith('pth'):
+                        os.system('rm {}'.format(os.path.join(checkpoint_path, item)))
+                
 
-                if "libero" in cfg.dataname and total_iter_num % cfg.close_loop_eval.eval_iters == 0 and total_iter_num != 0 and cfg.use_close_loop_eval:
-                    close_loop_eval = getattr(importlib.import_module("close_loop_eval_diffusion_libero"), "close_loop_eval_libero")
-                    close_loop_eval_start_time = time.time()
-                    _ = close_loop_eval(
-                        model=network,
-                        test_episodes_num=cfg.close_loop_eval.test_episodes_num,
-                        args=args,
-                        stride=cfg.dataset.stride,
-                        root_folder = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "close_loop_videos", f"{total_iter_num}_iters"),
-                        cfg = cfg,
-                        dataset_statistics = vla_dataset_openx.dataset_statistics,
-                    )
+            # *******************************************************#
+            # EVAL PART
+
+            if "libero" in cfg.dataname and total_iter_num % cfg.close_loop_eval.eval_iters == 0 and total_iter_num != 0 and cfg.use_close_loop_eval:
+                close_loop_eval = getattr(importlib.import_module("close_loop_eval_diffusion_libero"), "close_loop_eval_libero")
+                close_loop_eval_start_time = time.time()
+                _ = close_loop_eval(
+                    model=network,
+                    test_episodes_num=cfg.close_loop_eval.test_episodes_num,
+                    args=args,
+                    stride=cfg.dataset.stride,
+                    root_folder = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "close_loop_videos", f"{total_iter_num}_iters"),
+                    cfg = cfg,
+                    dataset_statistics = vla_dataset_openx.dataset_statistics,
+                )
 
 
 
 
-                total_iter_num += 1
-                data_start_time = time.time()
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(e)
-            pass
+            total_iter_num += 1
+            data_start_time = time.time()
+
     checkpoint = {
         "parameter": network_module.state_dict(),
         "optimizer": optimizer.state_dict(),
