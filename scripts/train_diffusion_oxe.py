@@ -22,7 +22,10 @@ current_path = os.getcwd()
 sys.path.append(current_path)
 sys.path.append(os.path.join(current_path, "utils/"))
 sys.path.append(os.path.join(current_path, "../scripts"))
+sys.path.append(os.path.join(current_path, "scripts"))
 sys.path.append(os.path.join(current_path, "../openvla"))
+sys.path.append(os.path.join(current_path, "openvla"))
+print(sys.path)
 
 
 

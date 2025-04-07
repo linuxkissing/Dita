@@ -526,7 +526,7 @@ def train(cfg: DictConfig):
             eval_dataset = train_dataset    
         print('use calvin')
     else:
-        raise("not supported")
+        raise("dataset not supported")
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)

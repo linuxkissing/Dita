@@ -26,6 +26,7 @@ def init_distributed_mode(args, cfg, init_method=None):
         args.gpu = int(os.environ["LOCAL_RANK"])
         args.distributed = True
         args.dist_backend = "nccl"
+        torch.cuda.set_device(args.gpu)
     elif "SLURM_PROCID" in os.environ:
         rank = int(os.environ["SLURM_PROCID"])
         print(torch.cuda.device_count())
@@ -65,6 +66,7 @@ def init_distributed_mode(args, cfg, init_method=None):
         os.environ["WORLD_SIZE"] = str(world_size)
         args.distributed = True
         args.dist_backend = "nccl"
+        torch.cuda.set_device(local_rank)
     else:
         print("Not using distributed mode")
         args.distributed = False
@@ -72,10 +74,7 @@ def init_distributed_mode(args, cfg, init_method=None):
 
     
 
-    torch.cuda.set_device(local_rank)
     
-    print("| distributed init (rank {})".format(rank), flush=True)
-    print('check:', 'MASTER_ADDR' in os.environ, flush=True)
     dist_backend = "nccl"
     # print(HydraConfig.get(), )
     # init_method = os.path.join(HydraConfig.get().runtime.cwd, cfg.task_name, "initial_method.txt")
