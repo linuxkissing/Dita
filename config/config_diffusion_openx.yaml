@@ -61,6 +61,7 @@ action_spec:
 use_close_loop_eval: False
 
 close_loop_eval:
+  eval_iters: 10000
   test_episodes_num: 5
 
 hydra:
