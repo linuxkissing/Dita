@@ -15,10 +15,10 @@ clone the code as follow,
 git clone https://github.com/RoboDita/Dita
 ```
 
-then,
+then, please consider install the base environment,
 
 ```
- pip install -r requirements.txt
+ pip install -r requirements_base.txt
 ```
 
 If you only evaluate it on calvin, you might use requirements_calvin.txt. To avoid the conflicts, we suggest you install tensorflow-probability==0.22.0 independently.
