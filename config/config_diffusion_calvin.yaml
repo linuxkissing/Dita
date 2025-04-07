@@ -14,7 +14,7 @@ abs_sup: 0
 use_action_head_diff: 0
 scheduler_type: 0
 cfg: 0
-dataname: 'calvin'
+dataname: 'calvin_mc'
 taskname: 'task_ABC_D'
 
 optimizer:

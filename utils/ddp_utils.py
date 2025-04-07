@@ -24,6 +24,8 @@ def init_distributed_mode(args, cfg, init_method=None):
         args.rank = int(os.environ["RANK"])
         args.world_size = int(os.environ["WORLD_SIZE"])
         args.gpu = int(os.environ["LOCAL_RANK"])
+        args.distributed = True
+        args.dist_backend = "nccl"
     elif "SLURM_PROCID" in os.environ:
         rank = int(os.environ["SLURM_PROCID"])
         print(torch.cuda.device_count())
@@ -61,16 +63,17 @@ def init_distributed_mode(args, cfg, init_method=None):
         os.environ["LOCAL_SIZE"] = str(local_size)
         os.environ["LOCAL_WORLD_SIZE"] = str(local_size)
         os.environ["WORLD_SIZE"] = str(world_size)
-
+        args.distributed = True
+        args.dist_backend = "nccl"
     else:
         print("Not using distributed mode")
         args.distributed = False
         return
 
-    args.distributed = True
+    
 
     torch.cuda.set_device(local_rank)
-    args.dist_backend = "nccl"
+    
     print("| distributed init (rank {})".format(rank), flush=True)
     print('check:', 'MASTER_ADDR' in os.environ, flush=True)
     dist_backend = "nccl"

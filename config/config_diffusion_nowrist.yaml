@@ -14,7 +14,7 @@ abs_sup: 0
 use_action_head_diff: 0
 scheduler_type: 0
 cfg: 0
-dataname: 'maniskill'
+dataname: 'dumpy'
 
 optimizer:
   name: 'adamw'
@@ -32,7 +32,7 @@ scheduler:
 
 defaults:
   - dataset: fix_traj_all
-  - model:  rt1_llama_dp
+  - model:  llama_dp
   - _self_
 
 action_spec:

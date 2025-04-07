@@ -43,11 +43,11 @@ We provide the corresponding models, that can be utilized for finetuing.
 
 ### PRETRAINING on OXE dataset
 
-Before you run the code, you should update the s3 key "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "S3_ENDPOINT". We train the network with 32 GPUs. 
+Before you run the code, you should update the s3 key "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "S3_ENDPOINT". We train the network with 32 GPUs. Meanwhile, please update 'data_path = "s3://openx"' in `scripts/train_diffusion_oxe.py'. In our experiments, we do not find a significant difference between dataset.traj_length=32 and dataset.traj_length=16 on OXE pretraining. Therefore, we suggest `dataset.traj_length=16 num_pred_action=15
 
 
 ```
-python scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=32 num_pred_action=31 scheduler_type=1 shuffle_buffer_size=128000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p32_wotimestep_oxe_noclamp_filter batch_size=256 
+python scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
 ```
 
 We observe that image augmentation is beneficial for SimplerEnv in our experiments. If you want to use image augmentation, please add ``+image_aug=1''

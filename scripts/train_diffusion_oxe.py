@@ -234,8 +234,14 @@ def train(cfg: DictConfig):
     args = argparse.Namespace()
     print(args)
     init_distributed_mode(args, cfg)
-    local_rank = int(os.environ["LOCAL_RANK"])
-    rank = int(os.environ["RANK"])
+    if 'LOCAL_RANK' in os.environ:
+        local_rank = int(os.environ["LOCAL_RANK"])
+    else:
+        local_rank = 0
+    if 'RANK' in os.environ:
+        rank = int(os.environ["RANK"])
+    else:
+        rank = 0
     print(cfg.dataset.data_path)
     @dataclass
     class DataAdapterForOpenx:        
@@ -256,7 +262,7 @@ def train(cfg: DictConfig):
             pixel_values = pixel_values.permute(0, 1, 4, 2, 3)
             del rlds_batch
             return dict(pixel_values=pixel_values, action=action, state=state, dataset_name=dataset_name, language_instruction= lang, loss_weight=loss_weight)
-    data_path = 's3://openx'
+    data_path = cfg.dataset.data_path
 
     shuffle_buffer_size = cfg.shuffle_buffer_size
 
@@ -271,8 +277,10 @@ def train(cfg: DictConfig):
     ii = 0
 
     train_dataloader = vla_dataset_openx
-
-    DEVICE = "cuda:" + str(os.environ["LOCAL_RANK"]) if torch.cuda.is_available() else "cpu"
+    if args.distributed:
+        DEVICE = "cuda:" + str(os.environ["LOCAL_RANK"]) if torch.cuda.is_available() else "cpu"
+    else:
+        DEVICE = 'cuda'
     # DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     network = RobotTransformerNet(
@@ -297,9 +305,9 @@ def train(cfg: DictConfig):
     )
     from transformers import AutoTokenizer, CLIPModel
     clip_tokenizer = AutoTokenizer.from_pretrained(
-        "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+        "openai/clip-vit-large-patch14", use_fast=False
     )
-    clipmodel = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/").to(DEVICE)
+    clipmodel = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(DEVICE)
 
     params = param_groups_weight_decay(network, lr=cfg.lr, weight_decay=0.05, lr_mult=0.1, pretrained_weight_list=("image_tokenizer.tokenizer",))
 
@@ -340,9 +348,12 @@ def train(cfg: DictConfig):
             if isinstance(v, torch.Tensor):
                 state[k] = v.to(DEVICE)
 
-    # network = network.to(DEVICE)
-    network = torch.nn.parallel.DistributedDataParallel(network.cuda(local_rank), device_ids=[local_rank], find_unused_parameters=False)
-
+    if args.distributed:
+        network_module = network.module
+        network = torch.nn.parallel.DistributedDataParallel(network.cuda(local_rank), device_ids=[local_rank], find_unused_parameters=False)
+    else:
+        network_module = network
+        network = network.to(DEVICE)
 
 
     criterion = torch.nn.CrossEntropyLoss()
@@ -406,9 +417,9 @@ def train(cfg: DictConfig):
                 noise = torch.randn(trajectory.shape, device=trajectory.device)
                 bsz = trajectory.shape[0]
 
-                timesteps = torch.randint(0, network.module.noise_scheduler.config.num_train_timesteps, (bsz,), device=trajectory.device).long()
+                timesteps = torch.randint(0, network_module.noise_scheduler.config.num_train_timesteps, (bsz,), device=trajectory.device).long()
 
-                noisy_trajectory = network.module.noise_scheduler.add_noise(trajectory, noise, timesteps)
+                noisy_trajectory = network_module.noise_scheduler.add_noise(trajectory, noise, timesteps)
 
 
                 inputs = clip_tokenizer(text=obs_new['language_instruction'], return_tensors="pt", max_length=77, padding="max_length", truncation=True)
@@ -421,18 +432,18 @@ def train(cfg: DictConfig):
 
                 with torch.cuda.amp.autocast():
                     pred = network(obs_new, None, noisy_action_tokens=noisy_trajectory,timesteps=timesteps, num_pred_action=cfg.num_pred_action,)
-                    if network.module.noise_scheduler.config.prediction_type == 'epsilon':
+                    if network_module.noise_scheduler.config.prediction_type == 'epsilon':
                         target = noise
                         if 'no_abs_diff' in cfg and cfg.no_abs_diff:
                             target = torch.cat([trajectory[:, :1], noise[:, 1:]], dim=1)
-                    elif network.module.noise_scheduler.config.prediction_type == 'sample':
+                    elif network_module.noise_scheduler.config.prediction_type == 'sample':
                         target = trajectory
                         pass
-                    elif network.module.noise_scheduler.config.prediction_type == 'v_prediction':
-                        target = network.module.noise_scheduler.get_velocity(trajectory, noise, timesteps)
+                    elif network_module.noise_scheduler.config.prediction_type == 'v_prediction':
+                        target = network_module.noise_scheduler.get_velocity(trajectory, noise, timesteps)
                         pass
                     else:
-                        raise ValueError(f"Unsupported prediction type {network.module.noise_scheduler.config.prediction_type}")
+                        raise ValueError(f"Unsupported prediction type {network_module.noise_scheduler.config.prediction_type}")
                     b, num, dim = pred.shape
                     # import ipdb;ipdb.set_trace()
                     logits = pred
@@ -506,7 +517,7 @@ def train(cfg: DictConfig):
                     and (total_iter_num % 1000 == 0) and 'no_checkpoints' not in cfg
                 ):
                     checkpoint = {
-                        "parameter": network.module.state_dict(),
+                        "parameter": network_module.state_dict(),
                         "optimizer": optimizer.state_dict(),
                         "scheduler": scheduler.state_dict(),
                         "epoch": epoch,
@@ -549,7 +560,7 @@ def train(cfg: DictConfig):
             print(e)
             pass
     checkpoint = {
-        "parameter": network.module.state_dict(),
+        "parameter": network_module.state_dict(),
         "optimizer": optimizer.state_dict(),
         # "scheduler": scheduler.state_dict(),
         "epoch": epoch,

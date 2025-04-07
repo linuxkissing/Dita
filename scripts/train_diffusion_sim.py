@@ -300,12 +300,12 @@ def evaluate_act(network, eval_dataloader, DEVICE, tokens_per_context_image,
             if cfg.dataname in ['calvin', 'rlbench', 'calvin_mc']:
                 if cfg.use_action_head_diff in [2, 4, 5]:
                     if hasattr(network, 'module'):
-                        model_output = network.module.inference_withfeats(obs_new, num_pred_action=num_pred_action,cfg=0)
+                        model_output = network_module.inference_withfeats(obs_new, num_pred_action=num_pred_action,cfg=0)
                     else:
                         model_output = network.inference_withfeats(obs_new, num_pred_action=num_pred_action,cfg=0)
                 else:
                     if hasattr(network, 'module'):
-                        model_output = network.module.inference(obs_new, num_pred_action=num_pred_action, abs_pose=1, cfg=0) # abs_pose here indicates we do not scale the data.
+                        model_output = network_module.inference(obs_new, num_pred_action=num_pred_action, abs_pose=1, cfg=0) # abs_pose here indicates we do not scale the data.
                     else:
                         model_output = network.inference(obs_new, num_pred_action=num_pred_action, abs_pose=1, cfg=0)
                 if cfg.dataname in ['rlbench']:
@@ -404,8 +404,14 @@ def train(cfg: DictConfig):
     args = argparse.Namespace()
     print(args)
     init_distributed_mode(args, cfg)
-    local_rank = int(os.environ["LOCAL_RANK"])
-    rank = int(os.environ["RANK"])
+    if 'LOCAL_RANK' in os.environ:
+        local_rank = int(os.environ["LOCAL_RANK"])
+    else:
+        local_rank = 0
+    if 'RANK' in os.environ:
+        rank = int(os.environ["RANK"])
+    else:
+        rank = 0
     print(cfg.dataset.data_path)
     if cfg.dataname == 'maniskill':
         print(cfg.dataname)
@@ -440,7 +446,10 @@ def train(cfg: DictConfig):
             include_target=cfg.dataset.include_target,
             use_euler=cfg.dataset.use_euler,
         )  # dataset_type 0 for train and 1 for eval
-    
+    elif cfg.dataname == 'dumpy':
+        from Dataset_Sim.SimDataset import SimDatasetDumpy 
+        train_dataset = SimDatasetDumpy()
+        eval_dataset = SimDatasetDumpy()
     elif cfg.dataname == 'calvin_mc':
         if cfg.wrap_grmg_data == 0:
             act_len = cfg.dataset.traj_length + cfg.num_pred_action - 1
@@ -519,7 +528,12 @@ def train(cfg: DictConfig):
     else:
         raise("not supported")
 
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    if args.distributed:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        eval_sampler = torch.utils.data.distributed.DistributedSampler(eval_dataset)
+    else:
+        train_sampler = None
+        eval_sampler = None
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=cfg.batch_size,
@@ -531,7 +545,6 @@ def train(cfg: DictConfig):
         persistent_workers=True,
     )
 
-    eval_sampler = torch.utils.data.distributed.DistributedSampler(eval_dataset)
     eval_dataloader = DataLoader(
         eval_dataset,
         batch_size=cfg.batch_size,
@@ -543,7 +556,10 @@ def train(cfg: DictConfig):
         persistent_workers=True,
     )
 
-    DEVICE = "cuda:" + str(os.environ["LOCAL_RANK"]) if torch.cuda.is_available() else "cpu"
+    if args.distributed:
+        DEVICE = "cuda:" + str(os.environ["LOCAL_RANK"]) if torch.cuda.is_available() else "cpu"
+    else:
+        DEVICE = 'cuda'
     # DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     time_sequence_length = cfg.num_pred_action if 'wrap_grmg_data' in cfg and cfg.wrap_grmg_data == 1 else cfg.dataset.traj_length
@@ -616,12 +632,16 @@ def train(cfg: DictConfig):
                 state[k] = v.to(DEVICE)
 
     # network = network.to(DEVICE)
-    network = torch.nn.parallel.DistributedDataParallel(network.cuda(local_rank), device_ids=[local_rank], find_unused_parameters=False)
+    if args.distributed:
+        network = torch.nn.parallel.DistributedDataParallel(network.cuda(local_rank), device_ids=[local_rank], find_unused_parameters=False)
+    else:
+        network = network.to(DEVICE)
 
-
-    tokens_per_action = network.module.tokens_per_action
-    tokens_per_context_image = network.module.tokens_per_context_image
-    tokens_per_step = tokens_per_action + tokens_per_context_image
+    
+    if args.distributed:
+        network_module = network.module
+    else:
+        network_module = network
 
     criterion = torch.nn.CrossEntropyLoss()
     L2_loss = torch.nn.MSELoss()
@@ -630,9 +650,9 @@ def train(cfg: DictConfig):
     if cfg.dataname in ['metaworld', 'calvin', 'calvin_mc']:
         from transformers import AutoTokenizer, CLIPModel
         clip_tokenizer = AutoTokenizer.from_pretrained(
-            "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+            "openai/clip-vit-large-patch14", use_fast=False
         )
-        clipmodel = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/").to(DEVICE)
+        clipmodel = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(DEVICE)
 
     writer = None
 
@@ -661,7 +681,8 @@ def train(cfg: DictConfig):
 
     for epoch in range(start_epoch, cfg.epoch):
 
-        train_sampler.set_epoch(epoch)
+        if args.distributed:
+            train_sampler.set_epoch(epoch)
 
         running_loss = 0.0
 
@@ -696,11 +717,11 @@ def train(cfg: DictConfig):
             bsz = trajectory.shape[0]
 
             timesteps = torch.randint(
-                0, network.module.noise_scheduler.config.num_train_timesteps, 
+                0, network_module.noise_scheduler.config.num_train_timesteps, 
                 (bsz,), device=trajectory.device
             ).long()
 
-            noisy_trajectory = network.module.noise_scheduler.add_noise(trajectory, noise, timesteps)
+            noisy_trajectory = network_module.noise_scheduler.add_noise(trajectory, noise, timesteps)
             if 'no_abs_diff' in cfg and cfg.no_abs_diff:
                 noisy_trajectory = torch.cat([torch.zeros_like(trajectory[:, :1]), noisy_trajectory[:, 1:]], dim=1)  
             if 'cat_pose_in_noise' in cfg and cfg.cat_pose_in_noise:
@@ -724,12 +745,12 @@ def train(cfg: DictConfig):
 
 
             # (b,t,c,h,w)
-            if network.module.noise_scheduler.config.prediction_type == 'epsilon':
+            if network_module.noise_scheduler.config.prediction_type == 'epsilon':
                 target = noise
                 if 'no_abs_diff' in cfg and cfg.no_abs_diff:
                     target = torch.cat([trajectory[:, :1], noise[:, 1:]], dim=1)
             else:
-                raise ValueError(f"Unsupported prediction type {network.module.noise_scheduler.config.prediction_type}")
+                raise ValueError(f"Unsupported prediction type {network_module.noise_scheduler.config.prediction_type}")
             b, num, dim = pred.shape
             logits = pred[:, reg_token_nums:]
             
@@ -792,7 +813,7 @@ def train(cfg: DictConfig):
                 and (total_iter_num % 5000 == 0)
             ):
                 checkpoint = {
-                    "parameter": network.module.state_dict(),
+                    "parameter": network_module.state_dict(),
                     "optimizer": optimizer.state_dict(),
                     "scheduler": scheduler.state_dict(),
                     "epoch": epoch,
@@ -813,17 +834,17 @@ def train(cfg: DictConfig):
             # *******************************************************#
             # EVAL PART
 
-            if total_iter_num % 5000 == 0 and total_iter_num != 0 and cfg.dataset.split_type != "overfit":
+            # if total_iter_num % 5000 == 0 and total_iter_num != 0 and cfg.dataset.split_type != "overfit":
 
-                try:
-                    evaluate_act(network, eval_dataloader, DEVICE, tokens_per_context_image, 
-                             tokens_per_step, criterion, writer, args, total_iter_num,
-                             network.module.noise_scheduler, None, cfg.num_pred_action, cfg, clipmodel=clipmodel, clip_tokenizer=clip_tokenizer)
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    print(e)
-                network.train()
+            #     try:
+            #         evaluate_act(network, eval_dataloader, DEVICE, None, 
+            #                  None, criterion, writer, args, total_iter_num,
+            #                  network_module.noise_scheduler, None, cfg.num_pred_action, cfg, clipmodel=clipmodel, clip_tokenizer=clip_tokenizer)
+            #     except Exception as e:
+            #         import traceback
+            #         traceback.print_exc()
+            #         print(e)
+            #     network.train()
 
             if total_iter_num % cfg.close_loop_eval.eval_iters == 0 and total_iter_num != 0 and cfg.use_close_loop_eval : 
             # if total_iter_num % 5000 == 0 and cfg.use_close_loop_eval : 

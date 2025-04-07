@@ -15,7 +15,7 @@ scheduler_type: 0 # diffusion scheduler
 attn_implementation: 'eager'
 add_weight: 0
 use_droid: False
-dataname: 'up_to_date_mixture'
+dataname: 'oxe_magic_soup_plus'
 batchfy: False
 shuffle_buffer_size: 64000
 use_action_head_diff: 2

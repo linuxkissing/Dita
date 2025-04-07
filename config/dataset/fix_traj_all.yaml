@@ -5,7 +5,7 @@ traj_length: 5
 include_target: 0
 num_given_observation: 2
 cameras_per_scene: 20
-use_baseframe_action: false
+use_baseframe_action: True
 split_type: 'fix_traj'
 train_data_list: '/xxx/xxx/share_data/Anonymous/Dataset/Sim_Data/maniskill2_0503_datalist/full_in_domain_balanced_train_list.pkl'
 eval_data_list: '/xxx/xxx/share_data/Anonymous/Dataset/Sim_Data/maniskill2_0503_datalist/full_in_domain_balanced_eval_list.pkl'

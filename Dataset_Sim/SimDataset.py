@@ -7,7 +7,6 @@ import time
 from collections import defaultdict
 from PIL import Image
 
-import datasets
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch3d.transforms as Pose3d
