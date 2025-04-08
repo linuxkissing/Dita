@@ -101,10 +101,10 @@ parser = argparse.ArgumentParser()
 args = parser.parse_args()
 init_distributed_mode(args)
 
-model = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/")
-processor = CLIPProcessor.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/")
+model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14/")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14/")
 clip_tokenizer = AutoTokenizer.from_pretrained(
-    "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+    "openai/clip-vit-large-patch14/", use_fast=False
 )
 DEVICE = "cuda:" + str(os.environ["LOCAL_RANK"]) if torch.cuda.is_available() else "cpu"
 local_rank = int(os.environ["LOCAL_RANK"])

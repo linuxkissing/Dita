@@ -149,10 +149,10 @@ class PytorchInference(nn.Module):
             )
 
         self.clip_tokenizer = AutoTokenizer.from_pretrained(
-            "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+            "openai/clip-vit-large-patch14/", use_fast=False
         )
         self.clip_text_encoder = CLIPModel.from_pretrained(
-            "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/"
+            "openai/clip-vit-large-patch14/"
         ).text_model
 
         self.to(self.device)

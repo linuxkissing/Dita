@@ -6,7 +6,6 @@ from pathlib import Path
 from Dataset_VLA.utils import euler2rotm, rotm2euler
 from scripts.evaluation.evaluate_policy import evaluate_policy
 from utils.data_utils import get_pose_cam
-os.environ["MS2_ASSET_DIR"] = "/xxx/xxx/share_data/Anonymous/maniskill2/assets"
 import pickle
 import sys
 import time
@@ -42,35 +41,6 @@ from pytorch3d.transforms import (
 from collections import defaultdict
 import random
 
-# param
-MAX_EPISODE_STEPS = 300
-TARGET_CONTROL_MODE = "pd_ee_delta_pose"  # param can be one of ['pd_ee_delta_pose', 'pd_ee_target_delta_pose']
-CAL_DELTA_METHOD = 2  # 0:direct 1:tf 2:model
-CAMERA_NAMES = ["hand_camera", "camera_1", "camera_2", "camera_3", "camera_4", "camera_5"]
-CAMERA_POSES = {
-    "camera_1": look_at([0.3, 0.2, 0.6], [-0.1, 0, 0.1]),
-    "camera_2": look_at([0.3, -0.2, 0.6], [-0.1, 0, 0.1]),
-    "camera_3": look_at([0.3, 0.2, 0.4], [-0.1, 0, 0.3]),
-    "camera_4": look_at([0.5, -0.2, 0.8], [-0.1, 0, 0.1]),
-    "camera_5": look_at([0.5, 0.3, 0.6], [-0.2, 0, 0.1]),
-}
-CAMERA_W = 224
-CAMERA_H = 224
-
-NATURAL_INSTRUCTIONS = {
-    "PickCube-v0": "pick up the red cube and move it to the green point",
-    "StackCube-v0": "stack the red cube on the green cube",
-    "PickSingleYCB-v0": "pick up the ",
-    # "PickSingleEGAD-v0": "Pick up an EGAD object and move it to a goal position",
-    "PegInsertionSide-v0": "insert the peg into the horizontal hole in the box",
-    # "PlugCharger-v0": "Plug a charger into a wall receptacle",
-    "AssemblingKits-v0": "insert the objects into the corresponding holes on the plate",
-    # "TurnFaucet-v0": "Turn on a faucet by rotating its handle",
-    # "PandaAvoidObstacles-v0": "Navigate the (Panda) robot arm through a region of dense obstacles and move the end-effector to a goal pose",
-    # "PickClutterYCB-v0": "Pick up an object from a clutter of 4-8 YCB objects",
-}
-CAMERA_POOL_FILE = "/xxx/xxx/share_data/Anonymous/maniskill2/camera_pool_300k.npz"
-camera_pool = np.load(CAMERA_POOL_FILE)["cameras"]
 
 class PytorchDiffInference(nn.Module):
     def __init__(self, model, prediction_type='epsilon',sequence_length = 15, 
@@ -124,10 +94,10 @@ class PytorchDiffInference(nn.Module):
         )
 
         self.clip_tokenizer = AutoTokenizer.from_pretrained(
-            "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+            "openai/clip-vit-large-patch14/", use_fast=False
         )
         self.clip_text_encoder = CLIPModel.from_pretrained(
-            "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/"
+            "openai/clip-vit-large-patch14/"
         ).text_model
 
         self.to(self.device)
@@ -449,6 +419,7 @@ class PytorchDiffInference(nn.Module):
 
         return output.cpu().numpy()
 
+
 def analyze_traj_str(traj_str):
 
     env_id = traj_str.split("-")[0] + "-v0"
@@ -647,7 +618,7 @@ class CustomModel1(CalvinBaseModel):
 def close_loop_eval_calvin(
     obs_mode="rgbd",
     reward_mode=None,
-    control_mode=TARGET_CONTROL_MODE,
+    control_mode=None,
     render_mode="cameras",
     record_dir=None,
     render_goal_point=True,

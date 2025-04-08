@@ -116,7 +116,7 @@ class RT1ViTImageTokenizer(nn.Module):
         # self.tokenizer = clip_vit_hf(
         #     freeze=freeze_backbone,
         #     gradient_checkpointing=True,
-        #     model_path="/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/",
+        #     model_path="openai/clip-vit-large-patch14/",
         # )
         if input_size is None:
             if use_wrist_img:
@@ -172,9 +172,9 @@ class RT1ViTImageTokenizer(nn.Module):
         self.tokenizer.set_grad_checkpointing()
 
         # TODO
-        # self.tokenizer_proj = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/").visual_projection
+        # self.tokenizer_proj = CLIPModel.from_pretrained("openai/clip-vit-large-patch14/").visual_projection
         # self.tokenizer_proj.requires_grad_(False)
-        # self.tokenizer = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/")
+        # self.tokenizer = CLIPModel.from_pretrained("openai/clip-vit-large-patch14/")
 
         # self.qformer = qformer_base_hf(
         #     num_queries=num_tokens,

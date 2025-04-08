@@ -264,9 +264,9 @@ def train(cfg: DictConfig):
 
     from transformers import AutoTokenizer, CLIPModel
     clip_tokenizer = AutoTokenizer.from_pretrained(
-        "/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/", use_fast=False
+        "openai/clip-vit-large-patch14/", use_fast=False
     )
-    clipmodel = CLIPModel.from_pretrained("/xxx/xxx/share_data/Anonymous/clip-vit-large-patch14/").to(DEVICE)
+    clipmodel = CLIPModel.from_pretrained("openai/clip-vit-large-patch14/").to(DEVICE)
     writer = None
 
 
