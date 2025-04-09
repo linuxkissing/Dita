@@ -17,11 +17,6 @@ import torch
 import torch.nn as nn
 import torchvision
 from Dataset_Sim.SimDataset import process_traj_v3
-from mani_skill2.envs.sapien_env import BaseEnv
-from mani_skill2.utils.io_utils import load_json
-from mani_skill2.utils.sapien_utils import look_at
-from mani_skill2.utils.visualization.cv2_utils import OpenCVViewer
-from mani_skill2.utils.wrappers import RecordEpisode
 from moviepy.editor import ImageSequenceClip
 from PIL import Image
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
@@ -30,16 +25,7 @@ from transformers import AutoTokenizer, CLIPModel, CLIPProcessor
 from transforms3d.quaternions import mat2quat, quat2mat
 from moviepy.editor import ImageSequenceClip
 # import a s3 package as Client
-from pytorch3d.transforms import (
-                    Transform3d,
-                    matrix_to_euler_angles,
-                    matrix_to_quaternion,
-                    matrix_to_rotation_6d,
-                    quaternion_to_matrix,
-                    euler_angles_to_matrix
-                )
-from collections import defaultdict
-import random
+
 
 
 class PytorchDiffInference(nn.Module):
@@ -679,30 +665,3 @@ def close_loop_eval_calvin(
 
     return 0, None, 0
 
-
-def analyze_traj_str_v2(client, traj_str, json_repo, data_root_path):
-
-    env_id = traj_str.split("/")[0]
-    # select_camera = int(traj_str.split("_")[-1].split(".")[0])
-    data = pickle.loads(client.get(os.path.join(data_root_path, traj_str)))
-    select_camera = data["camera_index_in_pool"]
-    json_root_path = os.path.join(json_repo, env_id)
-
-    if env_id == "PickSingleYCB-v0":
-        pkl_str = traj_str.split('/')[1]
-        task_name_start_pos = len(env_id) + 1
-        task_name_end_pos = pkl_str.find('_traj')
-        task_name = pkl_str[task_name_start_pos:task_name_end_pos]
-        json_data = load_json(os.path.join(json_root_path, task_name + '.json'))
-    else:
-        json_data = load_json(os.path.join(json_root_path, "trajectory.json"))
-    
-    traj_start_pos = traj_str.find("traj")
-    index = int(traj_str[traj_start_pos:].split("_")[1])
-    reset_kwargs = json_data["episodes"][index]["reset_kwargs"]
-    if "seed" in reset_kwargs:
-        reset_kwargs["seed"] = json_data["episodes"][index]["episode_seed"]
-    seed = reset_kwargs.pop("seed")
-   
-    instruction = data["step"][0]["observation"]["natural_instruction"]
-    return env_id, select_camera, seed, reset_kwargs, instruction
