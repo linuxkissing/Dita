@@ -357,6 +357,22 @@ def train(cfg: DictConfig):
         network = network.to(DEVICE)
 
 
+    if 'eval_only' in cfg:
+        print('Currently, we only support libero')
+        if "libero" in cfg.dataname:
+            close_loop_eval = getattr(importlib.import_module("close_loop_eval_diffusion_libero"), "close_loop_eval_libero")
+            _ = close_loop_eval(
+                model=network,
+                test_episodes_num=cfg.close_loop_eval.test_episodes_num,
+                args=args,
+                stride=cfg.dataset.stride,
+                root_folder = os.path.join(HydraConfig.get().runtime.cwd, HydraConfig.get().run.dir, "close_loop_videos", f"{total_iter_num}_iters"),
+                cfg = cfg,
+                dataset_statistics = vla_dataset_openx.dataset_statistics,
+            )
+        exit()
+        pass
+
     criterion = torch.nn.CrossEntropyLoss()
     L2_loss = torch.nn.MSELoss()
     loss_scaler = NativeScaler()
