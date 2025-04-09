@@ -47,8 +47,23 @@ Before you run the code, you should update the s3 key "AWS_ACCESS_KEY_ID", "AWS_
 
 
 ```
-python scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
+python --nproc_per_node=8 --nnodes=4 --node_rank=0 --master_port=$MASTER_PORT --master_addr=$MASTER_ADDR scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
 ```
+
+```
+python --nproc_per_node=8 --nnodes=4 --node_rank=1 --master_port=$MASTER_PORT --master_addr=$MASTER_ADDR scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
+```
+
+```
+python --nproc_per_node=8 --nnodes=4 --node_rank=2 --master_port=$MASTER_PORT --master_addr=$MASTER_ADDR scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
+```
+
+
+```
+python --nproc_per_node=8 --nnodes=4 --node_rank=3 --master_port=$MASTER_PORT --master_addr=$MASTER_ADDR scripts/train_diffusion_oxe.py task_name=openx_full_train_o2_p32 dataset.traj_length=16 num_pred_action=15 scheduler_type=1 shuffle_buffer_size=256000 dataname=oxe_magic_soup_plus task_name=oxe_full_train_o2_p15_wotimestep_oxe_noclamp_filter batch_size=256 
+```
+
+
 
 We observe that image augmentation is beneficial for SimplerEnv in our experiments. If you want to use image augmentation, please add ``+image_aug=1''
 
@@ -58,7 +73,7 @@ Here, we provide an example for finetuning with lora, i.e., the 10-shot finetuni
 
 ```
 
-python3 scripts/finetune_realdata.py +pretrained_path=dit_policy_checkpoint.pth dataset.traj_per_episode=16 dataset.traj_length=1 task_name=new_test_nodiffhead_few10_250124 num_pred_action=1 dataname=lab_907_1 batch_size=32 dataset.train_data_list=you pkl dataname file to include the collected pkl files name use_lora=True scheduler_type=0 dataset.num_given_observation=1  max_iters=10000
+python3 torchrun --nproc_per_node=4 --nnodes=1 --node_rank=0 scripts/finetune_realdata.py +pretrained_path=dit_policy_checkpoint.pth dataset.traj_per_episode=16 dataset.traj_length=1 task_name=new_test_nodiffhead_few10_250124 num_pred_action=1 dataname=lab_907_1 batch_size=32 dataset.train_data_list=you pkl dataname file to include the collected pkl files name use_lora=True scheduler_type=0 dataset.num_given_observation=1  max_iters=10000
 ```
 
 scheduler_type=0 indicates we use 100 DDPM training steps.
@@ -70,7 +85,7 @@ At first, you should follow the [instruction-calvin](https://github.com/mees/cal
 we train the network with 4GPUs.
 
 ```
-python scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batch_size=32 dataset.traj_length=11 num_pred_action=10 task_name=calvin_exp dataset.num_given_observation=2 dataset=fix_camera use_close_loop_eval=True close_loop_eval.test_episodes_num=32 dataset.use_baseframe_action=True taskname=task_ABC_D dataname=calvin_mc close_loop_eval.eval_iters=10000 close_loop_eval.test_episodes_num=250 scheduler_type=0 wrap_grmg_data=2 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 epoch=15 +min_lr_scale=0.01 scheduler.warmup_epochs=1
+python3 torchrun --nproc_per_node=4 --nnodes=1 --node_rank=0 scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batch_size=32 dataset.traj_length=11 num_pred_action=10 task_name=calvin_exp dataset.num_given_observation=2 dataset=fix_camera use_close_loop_eval=True close_loop_eval.test_episodes_num=32 dataset.use_baseframe_action=True taskname=task_ABC_D dataname=calvin_mc close_loop_eval.eval_iters=10000 close_loop_eval.test_episodes_num=250 scheduler_type=0 wrap_grmg_data=2 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 epoch=15 +min_lr_scale=0.01 scheduler.warmup_epochs=1
 ```
 
 ### Finetuning on LIBERO
@@ -82,7 +97,7 @@ We train and evaluate the model with 8 NVIDIA GPUs.
 Here is an example of the training script.
 
 ```
-python scripts/train_diffusion_oxe.py task_name=finetuning_LIBERO dataname=libero_spatial_no_noops dataset.traj_length=11 num_pred_action=10 scheduler_type=1 shuffle_buffer_size=128000 batch_size=64 use_close_loop_eval=True +trajectory_dim=7 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 +min_lr_scale=0.01 +image_aug=true 
+python3 torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0  scripts/train_diffusion_oxe.py task_name=finetuning_LIBERO dataname=libero_spatial_no_noops dataset.traj_length=11 num_pred_action=10 scheduler_type=1 shuffle_buffer_size=128000 batch_size=64 use_close_loop_eval=True +trajectory_dim=7 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 +min_lr_scale=0.01 +image_aug=true 
 ```
 
 
