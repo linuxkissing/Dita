@@ -550,7 +550,11 @@ class RobotTransformerNet(nn.Module):
             num_inference_steps = 100
         
         else:
-            num_inference_steps = 100            
+            num_inference_steps = 100    
+
+        if 'DENOISING_STEPS' in os.environ:
+            num_inference_steps = int(os.environ['DENOISING_STEPS'])
+
         self.noise_scheduler_eval.set_timesteps(num_inference_steps)
         img_feats = None
 

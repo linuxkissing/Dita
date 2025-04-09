@@ -1,0 +1,39 @@
+model_name=rt1
+tasks=(
+  pick_coke_can_variant_agg.sh
+  # bridge.sh
+  # drawer_variant_agg.sh
+  # drawer_visual_matching.sh
+  # move_near_variant_agg.sh
+  # move_near_visual_matching.sh
+  
+  # pick_coke_can_visual_matching.sh
+  # put_in_drawer_variant_agg.sh
+  # put_in_drawer_visual_matching.sh
+)
+
+ckpts=(
+   /mnt/petrelfs/houzhi/Code/embodied_foundation/SimplerEnv-OpenVLA/checkpoints/rt_1_x_tf_trained_for_002272480_step
+)
+
+action_ensemble_temp=-0.8
+for ckpt_path in ${ckpts[@]}; do
+  base_dir=$(dirname $ckpt_path)
+
+  # evaluation in simulator
+  # logging_dir=$base_dir/simpler_env/$(basename $ckpt_path)${action_ensemble_temp}
+  logging_dir=results_r/$(basename $ckpt_path)${action_ensemble_temp}
+  # mkdir -p $logging_dir
+  # for i in ${!tasks[@]}; do
+  #   task=${tasks[$i]}
+  #   echo "🚀 running $task ..."
+  #   device=0
+  #   session_name=CUDA${device}-$(basename $logging_dir)-${task}
+  #   bash scripts/$task $ckpt_path $model_name $action_ensemble_temp $logging_dir $device
+  # done
+
+  # statistics evalution results
+  echo "🚀 all tasks DONE! Calculating metrics..."
+  /mnt/petrelfs/houzhi/anaconda/envs/rt_dp/bin/python tools/calc_metrics_evaluation_videos.py \
+    --log-dir-root $logging_dir >> $logging_dir/total.metrics
+done
