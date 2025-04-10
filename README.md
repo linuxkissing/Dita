@@ -36,6 +36,7 @@ We provide the corresponding models, that can be utilized for finetuing.
 | Model        |Description                                                                                                 | Checkpoint Path                                |
 | ------------ | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | Dita    |  Diffusion Transformer Policy | [Google Drive](https://drive.google.com/file/d/1jaaoT0QGX4xwdzvTr_ki8OJ9-XkNOvub/view?usp=sharing)      |
+| Dita    |  Diffusion Transformer Policy(Pretrained on Droid) | [Google Drive](https://drive.google.com/file/d/1a3nkXCieQL7GaemZH_NFpXYNd_LO3_ZU/view?usp=sharing) |
 | Dita    |  Diffusion Transformer Policy (w/o image augmentation) | [Google Drive](https://drive.google.com/file/d/1qpyDYsMrUISve9koP-4_BCSEFgthn70P/view?usp=sharing)      |
 | Diffusion MLP Head | Transformer with Diffusion Head Policy (w/o image augmentation)  | [Google Drive](https://drive.google.com/file/d/1vdWLre4v_MlNEEII6Z97VLGH-3yxmr1O/view?usp=sharing) |
 
