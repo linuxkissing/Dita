@@ -146,16 +146,16 @@ class PytorchDiffInference(nn.Module):
             )
 
         self.clip_tokenizer = AutoTokenizer.from_pretrained(
-            "openai/clip-vit-large-patch14/", use_fast=False
+            "openai/clip-vit-large-patch14", use_fast=False
         )
         self.clipmodel = CLIPModel.from_pretrained(
-            "openai/clip-vit-large-patch14/"
+            "openai/clip-vit-large-patch14"
         ).to(self.device)
         
     # clip_tokenizer = AutoTokenizer.from_pretrained(
-    #     "openai/clip-vit-large-patch14/", use_fast=False
+    #     "openai/clip-vit-large-patch14", use_fast=False
     # )
-    # clipmodel = CLIPModel.from_pretrained("openai/clip-vit-large-patch14/").to(DEVICE)
+    # clipmodel = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(DEVICE)
 
         # self.to(self.device)
         self.frame = 0
