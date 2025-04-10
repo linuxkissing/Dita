@@ -12,6 +12,7 @@ n_action_steps: 1
 trajectory_dim: 7
 abs_sup: 0
 use_action_head_diff: 0
+num_inference_steps: 100
 scheduler_type: 0
 cfg: 0
 dataname: 'calvin_mc'

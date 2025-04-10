@@ -300,6 +300,7 @@ def train(cfg: DictConfig):
         dim_align_type=cfg.dim_align_type if 'dim_align_type' in cfg else 0,
         input_size='(224, 224)',
         scheduler_type=cfg.scheduler_type,
+        num_inference_steps=cfg.num_inference_steps,
         attn_implementation=cfg.attn_implementation,
         use_action_head_diff=cfg.use_action_head_diff,
     )

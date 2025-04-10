@@ -12,6 +12,7 @@ abs_sup: 0
 num_pred_action: 7
 n_action_steps: 1
 scheduler_type: 0 # diffusion scheduler
+num_inference_steps: 100
 attn_implementation: 'eager'
 add_weight: 0
 use_droid: False

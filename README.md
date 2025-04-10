@@ -85,7 +85,7 @@ At first, you should follow the [instruction-calvin](https://github.com/mees/cal
 we train the network with 4GPUs.
 
 ```
-torchrun --nproc_per_node=4 --nnodes=1 --node_rank=0 scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batch_size=32 dataset.traj_length=11 num_pred_action=10 task_name=calvin_exp dataset.num_given_observation=2 dataset=fix_camera use_close_loop_eval=True close_loop_eval.test_episodes_num=32 dataset.use_baseframe_action=True taskname=task_ABC_D dataname=calvin_mc close_loop_eval.eval_iters=10000 close_loop_eval.test_episodes_num=250 scheduler_type=0 wrap_grmg_data=2 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 epoch=15 +min_lr_scale=0.01 scheduler.warmup_epochs=1
+torchrun --nproc_per_node=4 --nnodes=1 --node_rank=0 scripts/train_diffusion_sim.py --config-name config_diffusion_calvin batch_size=32 dataset.traj_length=11 num_pred_action=10 task_name=calvin_exp dataset.num_given_observation=2 dataset=fix_camera use_close_loop_eval=True close_loop_eval.test_episodes_num=32 dataset.use_baseframe_action=True taskname=task_ABC_D dataname=calvin_mc close_loop_eval.eval_iters=10000 close_loop_eval.test_episodes_num=250 scheduler_type=0 wrap_grmg_data=2 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 epoch=15 +min_lr_scale=0.01 scheduler.warmup_epochs=1 num_inference_steps=10
 ```
 
 ### Finetuning on LIBERO
@@ -97,7 +97,7 @@ We train and evaluate the model with 8 NVIDIA GPUs.
 Here is an example of the training script.
 
 ```
-torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0  scripts/train_diffusion_oxe.py task_name=finetuning_LIBERO dataname=libero_spatial_no_noops dataset.traj_length=11 num_pred_action=10 scheduler_type=1 shuffle_buffer_size=128000 batch_size=64 use_close_loop_eval=True +trajectory_dim=7 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 +min_lr_scale=0.01 +image_aug=true 
+torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0  scripts/train_diffusion_oxe.py task_name=finetuning_LIBERO dataname=libero_spatial_no_noops dataset.traj_length=11 num_pred_action=10 scheduler_type=0 shuffle_buffer_size=128000 batch_size=64 use_close_loop_eval=True +trajectory_dim=7 +pretrained_path=dit_policy_checkpoint.pth +use_adjust_scheduler=true lr=0.0001 +min_lr_scale=0.01 +image_aug=true num_inference_steps=10
 ```
 
 

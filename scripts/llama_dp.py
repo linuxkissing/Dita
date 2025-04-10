@@ -148,6 +148,7 @@ class RobotTransformerNet(nn.Module):
         dim_align_type=0, # 0 pad
         prediction_type='epsilon',
         scheduler_type=0,
+        num_inference_steps=10,
         attn_implementation='eager',
         use_action_head_diff=False,
         vit_forward_version = None,
@@ -169,6 +170,7 @@ class RobotTransformerNet(nn.Module):
         self.time_sequence_length = time_sequence_length
         self.intermediate_size = intermediate_size
         self.input_size = input_size
+        self.num_inference_steps = num_inference_steps
 
         self.use_token_learner = use_token_learner
         self.return_attention_scores = return_attention_scores
@@ -419,11 +421,8 @@ class RobotTransformerNet(nn.Module):
             dtype=cond_data.dtype,
             device=cond_data.device,
             generator=None)
-        if self.scheduler_type == 1:
-            num_inference_steps = 100
-        
-        else:
-            num_inference_steps = 100         
+
+        num_inference_steps = self.num_inference_steps         
         self.noise_scheduler_eval.set_timesteps(num_inference_steps)
         feats = None
 
@@ -546,12 +545,8 @@ class RobotTransformerNet(nn.Module):
             dtype=cond_data.dtype,
             device=cond_data.device,
             generator=None)
-        if self.scheduler_type == 1:
-            num_inference_steps = 100
-        
-        else:
-            num_inference_steps = 100    
 
+        num_inference_steps = self.num_inference_steps
         if 'DENOISING_STEPS' in os.environ:
             num_inference_steps = int(os.environ['DENOISING_STEPS'])
 

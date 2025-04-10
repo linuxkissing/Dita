@@ -582,6 +582,7 @@ def train(cfg: DictConfig):
         dim_align_type=cfg.dim_align_type if 'dim_align_type' in cfg else 0,
         use_action_head_diff=cfg.use_action_head_diff,
         scheduler_type=cfg.scheduler_type,
+        num_inference_steps=cfg.num_inference_steps,
         trajectory_dim=cfg.trajectory_dim,
         vit_forward_version = cfg.model.vit_forward_version if 'vit_forward_version' in cfg.model else None,
     )
