@@ -12,7 +12,7 @@ sys.path.append(os.path.join(current_path, "../embodied_foundation/scripts"))
 sys.path.append(os.path.join(current_path, "../embodied_foundation/openvla"))
 sys.path.append(os.path.join(current_path, "openvla/"))
 from torch.utils.data import DataLoader
-from openvla.prismatic.vla.datasets.datasets_finetune import LabDataset_warp
+from openvla.openvla_warp.datasets_finetune import LabDataset_warp
 
 def get_training_data(cfg):
     if cfg.dataname == 'lab':
