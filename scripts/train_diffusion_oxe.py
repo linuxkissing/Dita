@@ -302,7 +302,6 @@ def train(cfg: DictConfig):
         scheduler_type=cfg.scheduler_type,
         attn_implementation=cfg.attn_implementation,
         use_action_head_diff=cfg.use_action_head_diff,
-
     )
     from transformers import AutoTokenizer, CLIPModel
     clip_tokenizer = AutoTokenizer.from_pretrained(
@@ -402,12 +401,9 @@ def train(cfg: DictConfig):
         
         print('begin')
         for i, batch in enumerate(train_dataloader):
-        # for i in range(1000):
 
             optimizer.zero_grad()
 
-            # batch_new = dict_to_gpu(batch, DEVICE)
-            
             obs_new = {}
             obs_new['language_instruction'] = batch['language_instruction']
             
@@ -450,8 +446,6 @@ def train(cfg: DictConfig):
                 pred = network(obs_new, None, noisy_action_tokens=noisy_trajectory,timesteps=timesteps, num_pred_action=cfg.num_pred_action,)
                 if network_module.noise_scheduler.config.prediction_type == 'epsilon':
                     target = noise
-                    if 'no_abs_diff' in cfg and cfg.no_abs_diff:
-                        target = torch.cat([trajectory[:, :1], noise[:, 1:]], dim=1)
                 elif network_module.noise_scheduler.config.prediction_type == 'sample':
                     target = trajectory
                     pass
@@ -483,14 +477,7 @@ def train(cfg: DictConfig):
             
             running_loss = running_loss.mean()
             
-            
-            extra_loss_rota = extra_loss[...,3:6].mean()
-            extra_loss_trans = extra_loss[...,:3].mean()
-
             running_loss = reduce_and_average(running_loss)
-
-            extra_loss_trans = reduce_and_average(extra_loss_trans)
-            extra_loss_rota = reduce_and_average(extra_loss_rota)
 
             loss_rota = reduce_and_average(loss_rota)
             loss_world_vector = reduce_and_average(loss_world_vector)
@@ -511,8 +498,8 @@ def train(cfg: DictConfig):
                     iter_time = (iter_end_time - iter_start_time) / 10
                     train_time = (iter_end_time - train_start_time)
                     iter_start_time = time.time()
-                    print("[epoch {}, iter {}, iter_time {}, train_time {}, ] lr: {} loss: {}, ext_vec: {}, extra_rota: {}, world_vector:{}, rota:{}, grip:{}, ".
-                        format(epoch + 1, i + 1, iter_time,train_time, optimizer.param_groups[0]["lr"], running_loss, extra_loss_trans, extra_loss_rota, loss_world_vector, loss_rota, loss_grip_close), flush=True)
+                    print("[epoch {}, iter {}, iter_time {}, train_time {}, ] lr: {} loss: {}, world_vector:{}, rota:{}, grip:{}, ".
+                        format(epoch + 1, i + 1, iter_time,train_time, optimizer.param_groups[0]["lr"], running_loss, loss_world_vector, loss_rota, loss_grip_close), flush=True)
 
                 if writer is not None:
                     writer.add_scalar("MSE_loss", running_loss, total_iter_num)
@@ -520,10 +507,6 @@ def train(cfg: DictConfig):
                     writer.add_scalar("MSE_loss_world_vector", loss_world_vector, total_iter_num)
                     writer.add_scalar("MSE_loss_grip_close", loss_grip_close, total_iter_num)
                     # writer.add_scalar("MSE_loss_terminate", loss_terminate, total_iter_num)
-                    
-                    writer.add_scalar("MSE_loss_extra_rota", extra_loss_rota, total_iter_num)
-                    writer.add_scalar("MSE_loss_extra_world_vector", extra_loss_trans, total_iter_num)
-                    
             # running_loss = 0.0
             sys.stdout.flush()
 

@@ -18,7 +18,7 @@ use_droid: False
 dataname: 'oxe_magic_soup_plus'
 batchfy: False
 shuffle_buffer_size: 64000
-use_action_head_diff: 2
+use_action_head_diff: 0
 data_path: 's3://openx'
 
 optimizer:
