@@ -117,7 +117,6 @@ opencv-python-headless==4.10.0.84
 packaging==24.1
 pandas==2.2.2
 parso==0.8.4
-petrel-oss-sdk===v2.2.1-2-g1505ef3-master
 pexpect==4.9.0
 pillow==10.4.0
 platformdirs==4.3.2
